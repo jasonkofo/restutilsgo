@@ -1,6 +1,7 @@
 package restutilsgo
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -152,6 +153,35 @@ func GetJSON(url string, obj interface{}) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed to perform GET HTTP Request: %v", err)
+	}
+	defer resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("could not read body of response data: %v", err)
+	}
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(obj); err != nil {
+		gocommon.PanicBadRequestf("GetJSON failed: Failed to decode JSON - %v", err.Error())
+	}
+
+	return nil
+}
+
+func PostJSON(url string, postobj interface{}, obj interface{}) error {
+	if reflect.ValueOf(obj).Kind() != reflect.Ptr {
+		return fmt.Errorf("a pointer reference must be passed into GetJSON")
+	}
+
+	b, err := json.Marshal(postobj)
+	if err != nil {
+		return fmt.Errorf("could not marshal request object for post: %v", err.Error())
+	}
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(b))
+	if err != nil {
+		return fmt.Errorf("failed to perform GET HTTP Request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("could not perform request: %v", err)
 	}
 	defer resp.Body.Close()
 	if err != nil {
